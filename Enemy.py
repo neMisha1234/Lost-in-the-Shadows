@@ -4,8 +4,8 @@ import pygame
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, group, x, y, fps, w, h):
-        super().__init__(group)
+    def __init__(self, group, x, y, fps, w, h, all_sprites):
+        super().__init__(group, all_sprites)
         self.image = pygame.surface.Surface((25, 50))
         self.image.fill((0, 255, 0))
         self.rect = self.image.get_rect()
@@ -44,8 +44,8 @@ class Enemy(pygame.sprite.Sprite):
         temp = pygame.sprite.spritecollide(self, objects, False)
 
         for obj in temp:
-            conx1 = obj.rect.x + obj.rect.x + obj.rect.w > self.rect.x > obj.rect.x
-            conx2 = obj.rect.x + obj.rect.x > self.rect.x + self.rect.w > obj.rect.x - obj.rect.w
+            conx1 = obj.rect.x + obj.rect.w > self.rect.x + self.rect.w > obj.rect.x
+            conx2 = obj.rect.x + obj.rect.w > self.rect.x > obj.rect.x
             cony_up = obj.rect.y < self.rect.y + self.rect.h < obj.rect.h + obj.rect.y
             cony_down = obj.rect.y < self.rect.y < obj.rect.h + obj.rect.y
             if conx1 or conx2:
