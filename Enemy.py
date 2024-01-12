@@ -36,7 +36,7 @@ class Enemy(pygame.sprite.Sprite):
         self.jump_and_fall()
 
         if self.playerx != None:
-            if self.playerx + self.playerw <= self.rect.x:
+            if self.playerx + self.playerw - 5 <=  self.rect.x:
                 self.rect.x -= self.vx / self.fps
             elif self.playerx >= self.rect.x + self.rect.w:
                 self.rect.x += self.vx / self.fps

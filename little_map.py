@@ -1,4 +1,5 @@
 import pygame
+import sys, os
 from HpBar import HpBar
 
 from BaseCharacter import BaseCharacter
@@ -25,7 +26,7 @@ clock = pygame.time.Clock()
 game = True
 generate_location()
 enemy = Enemy(enemy_sprites, 400, 200, fps, w, h, all_sprites)
-hero = BaseCharacter(hero_sprites, 50, 200, fps, w, h, all_sprites)
+hero = BaseCharacter(hero_sprites, 100, 200, fps, w, h, all_sprites)
 hpbar = HpBar(750, h - 50, hero.hp)
 
 while game:
