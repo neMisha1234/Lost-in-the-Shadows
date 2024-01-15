@@ -9,6 +9,7 @@ class Button:
         self.height = h
 
     def draw_btn_and_txt(self, text, screen):
+        self.text = text
         pygame.draw.rect(screen, "white", (self.left, self.top, self.weight, self.height), width=1)
         font = pygame.font.Font(None, self.weight // (len(text) // 2))
         text = font.render(f"{text}", 1, (255, 255, 255))
@@ -16,3 +17,8 @@ class Button:
 
     def check_position(self, x, y):
         return self.left < x < self.left + self.weight and self.top < y < self.top + self.height
+
+    def get_text(self):
+        return self.text
+
+

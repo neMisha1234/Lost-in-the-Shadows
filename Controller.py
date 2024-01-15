@@ -7,3 +7,6 @@ class Controller:
 
     def open_window(self, screen):
         self.current_window.start(screen)
+
+    def window_event(self, event):
+        return self.current_window.check_event(event)
