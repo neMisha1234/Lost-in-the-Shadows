@@ -44,3 +44,19 @@ class Player(sprite.Sprite):
         screen.blit(self.image, (self.rect.x, self.rect.y))
         hero = Player(55, 55)
         left = right = False
+        
+    def melee_attack():
+    character = pg.image.load('character.png')
+    weapon = pg.image.load('weapon.png')
+
+    character_pos = [100, 100]
+    weapon_pos = character_pos
+
+    attack_frames = 5
+
+    for _ in range(attack_frames):
+        weapon_pos[0] -= 10
+        screen.blit(character, character_pos)
+        screen.blit(weapon, weapon_pos)
+        pg.display.update()
+
