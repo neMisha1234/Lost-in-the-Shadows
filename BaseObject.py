@@ -3,7 +3,7 @@ from load_image import load_image
 
 pygame.init()
 
-tile_width = tile_height = 51
+tile_width = tile_height = 50
 floor = pygame.image.load(os.path.join('data', "Ground.jpg"))
 floor = pygame.transform.scale(floor, (tile_width, tile_height))
 floor_up = pygame.image.load(os.path.join('data', "Ground_up.jpg"))

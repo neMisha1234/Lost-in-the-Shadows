@@ -1,8 +1,9 @@
-import datetime
+import datetime as dt
 import pygame
 from load_image import load_image
 import sqlite3
 from Items import items_function
+from Atack import Attack
 
 
 class BaseCharacter(pygame.sprite.Sprite):
@@ -21,9 +22,14 @@ class BaseCharacter(pygame.sprite.Sprite):
         self.energy = 100
         self.energy_v = 15
         self.kills = 0
+        self.damage = 25
+        self.mw = False
+        self.is_attack = False
+        self.total_damage = 0
+        self.total_damage_block = 0
 
-        time = datetime.datetime.now().time()
-        self.time_to_get_damage = datetime.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second)
+        time = dt.datetime.now().time()
+        self.time_to_get_damage = dt.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second)
         self.damage_resist = 0
 
         self.fall_vector = 0
@@ -37,22 +43,29 @@ class BaseCharacter(pygame.sprite.Sprite):
         self.left = self.right = False
         self.near_wall = False
 
+        self.attack_speed = 100
 
         self.hp = 100
         self.load_items_from_db()
         self.reload_energy = True
         self.MAX_ENERGY = 100
 
+    def get_rect(self):
+        return self.rect
+
     def load_items_from_db(self):
         con = sqlite3.connect("data/Items.sqlite")
         cur = con.cursor()
+        t = 0
         self.items = list(map(lambda x: x[0], cur.execute("""SELECT name FROM all_items WHERE in_cur_invent > 0""").fetchall()))
 
         for item in self.items:
+            if item == "Волшебный Посох":
+                t += 1
             items_function[item](self)
         if not self.items:
             items_function["standart"](self)
-
+        self.mw = t
     def check_energy(self):
         if self.reload_energy:
             self.energy += self.energy_v / self.fps
@@ -80,8 +93,8 @@ class BaseCharacter(pygame.sprite.Sprite):
         temp = pygame.sprite.spritecollide(self, self.all_sprites, False)
         if temp:
             for en in pygame.sprite.spritecollide(self, enemys, False):
-                time = datetime.datetime.now().time()
-                if datetime.timedelta(hours=time.hour, minutes=time.minute,
+                time = dt.datetime.now().time()
+                if dt.timedelta(hours=time.hour, minutes=time.minute,
                                       seconds=time.second) >= self.time_to_get_damage + en.attack_speed:
                     self.get_damage(en.damage)
                     if en.rect.x + en.rect.w < self.rect.x:
@@ -89,7 +102,7 @@ class BaseCharacter(pygame.sprite.Sprite):
                     else:
                         self.push = -1
                     self.fall_vector = 3
-                    self.time_to_get_damage = datetime.timedelta(hours=time.hour, minutes=time.minute,
+                    self.time_to_get_damage = dt.timedelta(hours=time.hour, minutes=time.minute,
                                                                  seconds=time.second)
             if last_y < self.rect.y:
                 self.rect.y = last_y
@@ -112,6 +125,7 @@ class BaseCharacter(pygame.sprite.Sprite):
 
     def get_damage(self, d):
         self.hp -= d * ((100 - self.damage_resist) / 100)
+        self.total_damage_block += d * (self.damage_resist / 100)
 
     def update(self, objects, enemys):
         last_x = self.rect.x
@@ -128,15 +142,15 @@ class BaseCharacter(pygame.sprite.Sprite):
 
         for en in enemys:
             if self.rect.colliderect(en.rect):
-                time = datetime.datetime.now().time()
-                if datetime.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second) >= self.time_to_get_damage + en.attack_speed:
+                time = dt.datetime.now().time()
+                if dt.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second) >= self.time_to_get_damage + en.attack_speed:
                     self.get_damage(en.damage)
                     if en.rect.x + en.rect.w >= self.rect.x >  en.rect.x:
                         self.push = 1
                     else:
                         self.push = -1
                     self.fall_vector = 3
-                    self.time_to_get_damage = datetime.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second)
+                    self.time_to_get_damage = dt.timedelta(hours=time.hour, minutes=time.minute, seconds=time.second)
             self.check_hp()
 
         keys = pygame.key.get_pressed()
@@ -170,6 +184,7 @@ class BaseCharacter(pygame.sprite.Sprite):
                 self.flag = False
                 self.fall_vector = 12
         self.jump_and_fall(enemys)
+        self.attack = Attack((self.rect.x, self.rect.y), -90, self.damage, 50)
 
         if self.climb and self.near_wall:
             self.reload_energy = False

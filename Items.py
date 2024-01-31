@@ -7,7 +7,8 @@ pygame.init()
 pygame.font.SysFont('arial', 36)
 
 items_descrip = {"Броня Титана": """Броня Титана – могучий&артефакт, некогда&принадлежащий одному&из владельцев&этого замка.&&На кирасе начерчено&предложение:&«Absolut defense»&&Способности:&&Absolute Defense:& увеличивает&сопротивление урону&на 75%, а также&уменьшает скорость&игрока в два раза.
-                """, "Клеймор": "Клеймор-сильнейший из&существующих мечей, &повезло!, а нет&несовсем, меч ПРОКЛЯТ.&&Когда вы держите&меч в руках вы&слышыте шепот: &«Are you wanna&DEADLY power?»&&Способности:&&Deadly power:&увеличивает весь&урон игрока в два&раза, взамен&уменьшает&сопротивление&игрока на 100%."}
+                """, "Клеймор": "Клеймор-сильнейший из&существующих мечей, &повезло!, а нет&несовсем, меч ПРОКЛЯТ.&&Когда вы держите&меч в руках вы&слышыте шепот: &«Are you wanna&DEADLY power?»&&Способности:&&Deadly power:&увеличивает весь&урон игрока в два&раза, взамен&уменьшает&сопротивление&игрока на 100%.",
+                 "Волшебный Посох": "РАЗРАБОТЧИК ПОД&&КОНЕЦ СРОКОВ&СДАЧИ СОВСЕМ&&ДОЛБАНУЛСЯ?&&Да. Предмет дает&20 урона и&увеличивает скорость&атаки в два раза&, взамен ничего не&забирает. Где баланс?&Явно не тут.&&Способности:&&Awama Kidawra:&увеливает урон на&20 и скорость атки&в два раза"}
 
 
 class Item:
@@ -197,10 +198,12 @@ class Item_dialog:
         screen.blit(self.dialog, (self.x, self.y))
 
 
-titan_cuiras = Item("Броня Титана", 0, "titan_ciras.png")
+titan_cuiras = Item("Броня Титана", 1, "titan_ciras.png")
 titan_cuiras.add_to_db()
 claimore = Item("Клеймор", 1, "claimore.png")
 claimore.add_to_db()
+magick_wand = Item("Волшебный Посох", 1, "magicwand.png")
+magick_wand.add_to_db()
 
 def absolute_defense(hero):
     hero.damage_resist += 75
@@ -209,11 +212,19 @@ def absolute_defense(hero):
 def set_to_standart(hero):
     hero.damage_resist = 0
     hero.vx, hero.vy = 150, 50
+    hero.damage = 25
+    hero.attack_speed = 100
 
 def deadly_power(hero):
     hero.damage_resist -= 100
+    hero.damage *= 2
+
+def awama_kidavra(hero):
+    hero.attack_speed *= 2.5
+    hero.damage += 20
 
 
 items_function = {titan_cuiras.name: absolute_defense,
                   "standart": set_to_standart,
-                  claimore.name: deadly_power}
+                  claimore.name: deadly_power,
+                  magick_wand.name: awama_kidavra}

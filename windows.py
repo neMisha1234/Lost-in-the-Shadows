@@ -1,3 +1,5 @@
+import sqlite3
+
 import pygame
 from load_image import load_image
 from Button import Button, Scroll_btns
@@ -6,6 +8,11 @@ from Enemy import Enemy
 from BaseCharacter import BaseCharacter
 from HpBar import HpBar
 from Items import Inventory, Item_dialog, Current_inventory, items_function
+from myCamera import Camera
+from BaseObject import tile_width, tile_height
+from Magic_Atack import MagicAttack
+
+LVL_ID = 0
 
 
 class Pause:
@@ -29,7 +36,7 @@ class Pause:
                     if btn.get_text().strip() == "Главное меню":
                         self.controller.set_current_window(self.menu)
                     if btn.get_text().strip() == "Настройки":
-                        pass
+                        self.controller.set_current_window(Settings(self.controller, self, self.menu))
                     if btn.get_text().strip() == "Продолжить игру":
                         items_function["standart"](self.game.hero)
                         self.game.hero.load_items_from_db()
@@ -120,6 +127,11 @@ class Invent_window:
 
     def start(self, screen):
         screen.fill((0, 0, 0))
+        items_function["standart"](self.game.hero)
+        self.game.hero.load_items_from_db()
+        self.attributes = [f"Текущее здоровье: {self.hero.hp}", f"Сопротивление урону: {self.hero.damage_resist}",
+                           f"Скорость бега: {self.hero.vx}", f"Максимальная энергия: {self.hero.MAX_ENERGY}",
+                           f"Высота прыжка: {self.hero.vy}"]
         if self.dialog:
             if self.dialog.it_desc:
                 self.it_des = self.dialog.it_desc
@@ -138,22 +150,88 @@ class Invent_window:
                 self.dialog.draw(screen)
         if self.it_des:
             self.it_des.draw_on_screen(screen)
-        screen.blit(self.player_im, (150, 100))
+        screen.blit(self.player_im, (250, 100))
         for i in range(len(self.attributes)):
             font = pygame.font.Font(None, 30)
             text = font.render(self.attributes[i], True, (159, 131, 3))
-            screen.blit(text, (100, 50 * i + 150))
+            screen.blit(text, (25, 50 * i + 150))
 
+
+class Win_Level:
+    def __init__(self, cont, menu, go, hero):
+        global LVL_ID
+        self.controller = cont
+        self.menu = menu
+        self.hero = hero
+        self.go = go
+        self.btns = []
+        self.btn_names = ["Следующий уровень", "  Главное меню  "]
+        if LVL_ID == 2:
+            LVL_ID = 0
+            self.btn_names[0] = "Выйти из игры"
+            self.btn_names = self.btn_names[::-1]
+        self.texts = [f"Всего урона нанесено: {self.hero.total_damage}",
+                      f"Всего урона заблокировано: {self.hero.total_damage_block}",
+                      f"Всего убийств: {self.hero.kills}"]
+
+    def create_button(self, x, y, text, screen):
+        btn = Button(x, y, 200, 100)
+        background = btn.check_position(*pygame.mouse.get_pos())
+        btn.draw_btn_and_txt(text, screen, background)
+        self.btns.append(btn)
+
+    def check_event(self, event, keys=None):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            for btn in self.btns:
+                if btn.check_position(*pygame.mouse.get_pos()):
+                    if btn.get_text().strip() == "Следующий уровень":
+                        if LVL_ID < 2:
+                            self.controller.set_current_window(Game(self.controller, self.menu, self.go))
+                    if btn.get_text().strip() == "Главное меню":
+                        self.controller.set_current_window(self.menu)
+                    if btn.get_text().strip() == "Выйти из игры":
+                        return True
+
+    def start(self, screen):
+        screen.fill((0, 0, 0))
+        f = pygame.font.Font(None, 100)
+        txt = f.render("Победа!", 1, (255, 215, 0))
+        screen.blit(txt, (500 - txt.get_width() // 2, 15))
+        self.btns = []
+        x, y = pygame.mouse.get_pos()
+        cnt = 0
+
+        for i in range(2):
+            self.create_button(25, 150 + 110 * i, self.btn_names[i], screen)
+            if self.btns[i].check_position(x, y):
+                cnt += 1
+
+        if cnt > 0:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        i = 0
+        font = pygame.font.Font(None, 50)
+        for text in self.texts:
+            screen.blit(font.render(text, 1, (25, 255, 90)), (250, 150 + 100 * i))
+            i += 1
 
 class Game:
     def __init__(self, cont, menu, go):
+        global LVL_ID
         self.controller = cont
         self.menu = menu
+        self.is_attack = False
+
+        con = sqlite3.connect("data/Items.sqlite")
+        cur = con.cursor()
+        lvl_name = cur.execute("""SELECT name FROM levels WHERE id = ?""", (LVL_ID, )).fetchone()[0]
 
         self.hero_sprites = pygame.sprite.Group()
         self.enemy_sprites = pygame.sprite.Group()
         self.objects = pygame.sprite.Group()
         self.all_sprites = pygame.sprite.Group()
+        self.attack_sprites = pygame.sprite.Group()
         self.size = w, h = 2000, 500
         self.game_over = go
         self.background = load_image("background.jpg")
@@ -164,14 +242,19 @@ class Game:
         self.fps = 60
         self.btns = []
         self.btn_names = ["Pause.png"]
+        self.enemies_cnt = 4
 
-        def generate_location():
-            generate_level(load_level("small_lvl"), self.objects, self.all_sprites)
-
-        generate_location()
-        self.enemy = Enemy(self.enemy_sprites, 400, 200, self.fps, w, h, self.all_sprites)
+        generate_level(load_level(lvl_name), self.objects, self.all_sprites)
+        lvl = load_level(lvl_name)
+        self.enemys = []
+        coords = [(400, 200), (650, 200), (800, 200), (1200, 200)]
+        for i in range(self.enemies_cnt):
+            self.enemys.append(Enemy(self.enemy_sprites, *coords[i], self.fps, w, h, self.all_sprites))
         self.hero = BaseCharacter(self.hero_sprites, 100, 200, self.fps, w, h, self.all_sprites)
+        self.camera = Camera(self.hero, self.map, 1000, 500, len(lvl[0]) * tile_width, len(lvl) * tile_height)
         self.hpbar = HpBar(750, h - 50, self.hero.hp)
+        self.attack = MagicAttack((self.hero.rect.x + self.hero.rect.w, self.hero.rect.y + self.hero.rect.h // 2),
+                                  self.hero.damage, 20, (240, 100, 0), self.hero, self.hero.attack_speed)
 
     def create_button(self, x, y, image, screen):
         btn = Button(x, y, 50, 50)
@@ -185,6 +268,12 @@ class Game:
                 if btn.check_position(*pygame.mouse.get_pos()):
                     if btn.get_text().strip() == "Pause.png":
                         self.controller.set_current_window(Pause(self.controller, self.menu, self))
+            if not self.is_attack:
+                self.is_attack = True
+                self.attack = MagicAttack((self.hero.rect.x + self.hero.rect.w, self.hero.rect.y + self.hero.rect.h // 2),
+                                          self.hero.damage, 20, (240, 100, 0), self.hero, self.hero.attack_speed)
+                self.attack_sprites = pygame.sprite.Group()
+                self.attack_sprites.add(self.attack)
         if pygame.key.get_mods() & pygame.KMOD_SHIFT:
             self.hero.climb = True
         else:
@@ -195,12 +284,37 @@ class Game:
             self.controller.set_current_window(Pause(self.controller, self.menu, self))
 
     def start(self, screen):
+        global LVL_ID
+        if self.hero.kills == self.enemies_cnt:
+            LVL_ID += 1
+            self.controller.set_current_window(Win_Level(self.controller, self.menu, self.game_over, self.hero))
         self.map.fill((255, 255, 255))
         self.btns = []
+
+        self.hero_sprites.update(self.objects, self.enemy_sprites)
+        self.hero_sprites.draw(self.map)
+        if not self.hero_sprites:
+            print("GAME_OVER")
+            self.controller.set_current_window(self.game_over)
+
+        self.enemy_sprites.update(self.objects, self.hero)
+        self.enemy_sprites.draw(self.map)
+        for enemy in self.enemys:
+            enemy.set_player(self.hero.rect.x)
+
+        self.objects.draw(self.map)
+        self.hpbar.update(self.hero.hp)
+        if self.is_attack:
+            self.attack_sprites.update(self.enemy_sprites, self.objects)
+            self.attack_sprites.draw(self.map)
+            if not self.attack_sprites:
+                self.is_attack = False
+
+        screen.blit(self.map, self.camera.follow_player())
         x, y = pygame.mouse.get_pos()
         cnt = 0
 
-        self.create_button(0, 0, self.btn_names[0], self.map)
+        self.create_button(0, 0, self.btn_names[0], screen)
         for i in range(len(self.btns)):
             if self.btns[i].check_position(x, y):
                 cnt += 1
@@ -209,29 +323,15 @@ class Game:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
         else:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
-
-        self.hero_sprites.update(self.objects, self.enemy_sprites)
-        self.hero_sprites.draw(self.map)
-        if not self.hero_sprites:
-            print("GAME_OVER")
-            self.controller.set_current_window(self.game_over)
-
-        self.hpbar.draw(self.map)
-
-        self.enemy_sprites.update(self.objects, self.hero)
-        self.enemy_sprites.draw(self.map)
-        self.enemy.set_player(self.hero.rect.x)
-
-        self.objects.draw(self.map)
-        self.hpbar.update(self.hero.hp)
-        self.hpbar.draw(self.map)
-
-        screen.blit(self.map, (0, 0))
         screen.blit(pygame.transform.scale(load_image("scelet.jpg", "white"), (50, 50)), (40, 0))
         screen.blit(pygame.transform.scale(load_image("equal.png", "white"), (30, 30)), (90, 10))
+        self.hpbar.draw(screen)
         f = pygame.font.Font(None, 50)
         text = f.render(f"{self.hero.kills}", 1, (0, 0, 0))
         screen.blit(text, (130, 5))
+        screen.blit(pygame.transform.scale(load_image("chertochka.png", "white"), (50, 50)), (130, 5))
+        text = f.render(f"{self.enemies_cnt}", 1, (0, 0, 0))
+        screen.blit(text, (155, 20))
 
 
 class Dialog_window:
@@ -392,7 +492,7 @@ class Settings:
 class Menu:
     def __init__(self, w, h, cntrl):
         pygame.init()
-        self.start_image = load_image("screen.jpg")
+        self.start_image = load_image("screen.png", (255, 255, 255))
         self.w = w
         self.h = h
         self.btns = []

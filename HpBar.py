@@ -14,11 +14,9 @@ class HpBar:
 
     def update(self, hp):
         k = hp / 100
-        if self.k != k:
-            self.k = k
-            self.w2 *= self.k
+        w2 = k * self.w2
         if hp > 0:
-            self.image2 = pygame.surface.Surface((self.w2, self.h))
+            self.image2 = pygame.surface.Surface((w2, self.h))
             self.image2.fill((255, 0, 0))
 
     def draw(self, screen):
