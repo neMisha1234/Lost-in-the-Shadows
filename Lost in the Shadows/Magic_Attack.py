@@ -48,6 +48,7 @@ class MagicAttack(pygame.sprite.Sprite):
             for enemy in enemies:
                 if pygame.sprite.collide_rect(self, enemy):
                     self.kill()
+                    self.hero.total_damage += self.damage
                     enemy.get_damage(self)
                     break
         else:
