@@ -183,7 +183,6 @@ class BaseCharacter(pygame.sprite.Sprite):
                 self.flag = False
                 self.fall_vector = 12
         self.jump_and_fall(enemys)
-        self.attack = Attack((self.rect.x, self.rect.y), -90, self.damage, 50)
 
         if self.climb and self.near_wall:
             self.reload_energy = False
