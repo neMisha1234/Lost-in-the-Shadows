@@ -3,7 +3,6 @@ import pygame
 from load_image import load_image
 import sqlite3
 from Items import items_function
-from Atack import Attack
 
 
 class BaseCharacter(pygame.sprite.Sprite):
